@@ -13,7 +13,7 @@ def setup_cors(app: FastAPI):
         app: FastAPI application instance
     """
     origins = [
-        "http://localhost:3000",
+            "http://localhost:3000",
         "https://unisynchq.com",
         "https://www.unisynchq.com"
     ]

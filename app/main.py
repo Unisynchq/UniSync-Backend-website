@@ -21,10 +21,6 @@ app = FastAPI(
 )
 
 
-# Setup CORS
-setup_cors(app)
-
-
 # Request logging middleware
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -54,6 +50,10 @@ async def log_requests(request: Request, call_next):
     })
     
     return response
+
+
+# Setup CORS (after other middleware to ensure proper execution order)
+setup_cors(app)
 
 
 # Global exception handler
