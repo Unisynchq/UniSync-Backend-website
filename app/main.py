@@ -52,13 +52,21 @@ async def log_requests(request: Request, call_next):
     return response
 
 
-# Global exception handler
+# Global exception handler (excludes HTTPException which FastAPI handles automatically)
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """Handle all unhandled exceptions"""
+    """Handle all unhandled exceptions (excluding HTTPException)"""
+    from fastapi import HTTPException
+    
+    # Don't handle HTTPException - let FastAPI's default handler process it
+    if isinstance(exc, HTTPException):
+        raise
+    
     logger.error("Unhandled exception", exc, {
         "path": request.url.path,
-        "method": request.method
+        "method": request.method,
+        "exception_type": type(exc).__name__,
+        "exception_message": str(exc)
     })
     
     return JSONResponse(
