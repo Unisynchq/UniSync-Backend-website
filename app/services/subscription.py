@@ -59,31 +59,30 @@ class SubscriptionService:
                 raise Exception("Failed to create subscription in database")
                 
         except APIError as e:
-            # Check if error is due to unique constraint violation (duplicate email)
-            error_dict = e.args[0] if e.args else {}
-            error_code = error_dict.get("code", "")
-            error_message = error_dict.get("message", "")
+            # Access attributes directly instead of using .get()
+            raw_error = str(e)
+            err_code = getattr(e, "code", "") or ""
+            err_msg = getattr(e, "message", "") or raw_error
             
-            # PostgreSQL unique constraint violation code: 23505
-            # PostgREST may return different error formats, check for common patterns
-            if "23505" in str(error_code) or "unique" in error_message.lower() or "duplicate" in error_message.lower():
+            # Check for duplicate email (Postgres Unique Violation is 23505)
+            if "23505" in str(err_code) or "unique constraint" in str(err_msg).lower():
                 logger.info("Duplicate subscription attempt (caught by unique constraint)", {
                     "email": email[:5] + "***",
                     "source": source
                 })
                 return {
                     "success": True,
-                    "message": "This email is already registered. We'll be in touch soon!",
+                    "message": "Thank you! You are already on the list.",
                     "is_duplicate": True
                 }
             
-            # Re-raise if it's a different database error
-            logger.error("Database error creating subscription", e, {
+            # Re-raise if it's a different error
+            logger.error(f"Database error: {raw_error}", {
                 "email": email[:5] + "***",
                 "source": source,
-                "error_code": error_code
+                "code": err_code
             })
-            raise
+            raise e
             
         except Exception as e:
             logger.error("Error creating subscription", e, {
@@ -109,11 +108,13 @@ class SubscriptionService:
             return None
         except APIError as e:
             # Re-raise database connection errors - don't silently fail
-            logger.error("Database error fetching subscription", e, {
+            raw_error = str(e)
+            err_code = getattr(e, "code", "") or ""
+            logger.error(f"Database error fetching subscription: {raw_error}", {
                 "email": email[:5] + "***",
-                "error_code": e.args[0].get("code", "") if e.args else ""
+                "code": err_code
             })
-            raise
+            raise e
         except Exception as e:
             logger.error("Error fetching subscription", e, {
                 "email": email[:5] + "***"
