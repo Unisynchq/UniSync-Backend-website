@@ -21,6 +21,10 @@ app = FastAPI(
 )
 
 
+# Setup CORS FIRST (before any other middleware to ensure it wraps everything including OPTIONS preflight)
+setup_cors(app)
+
+
 # Request logging middleware
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
@@ -110,10 +114,6 @@ async def startup_event():
 async def shutdown_event():
     """Application shutdown event"""
     logger.info("UniSync Backend API shutting down")
-
-
-# Setup CORS (at the very end - last middleware added runs first, ensuring it wraps all responses including errors and exception handlers)
-setup_cors(app)
 
 
 if __name__ == "__main__":

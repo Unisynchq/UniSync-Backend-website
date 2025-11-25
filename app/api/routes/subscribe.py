@@ -8,7 +8,7 @@ from app.schemas import SubscribeRequest, SubscribeResponse, ErrorResponse
 from app.services.rate_limit import rate_limit_service
 from app.services.subscription import subscription_service
 from app.services.email import email_service
-from app.utils.validation import validate_email, sanitize_email, is_honeypot_filled
+from app.utils.validation import sanitize_email, is_honeypot_filled
 from app.utils.logger import logger
 from app.config import settings
 
@@ -93,39 +93,20 @@ async def subscribe(
                 }
             )
         
-        # Email validation
-        if not body.email or not isinstance(body.email, str):
-            logger.warn("Missing email in request", {"correlation_id": correlation_id})
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "error": "Email is required",
-                    "code": "VALIDATION_ERROR"
-                }
-            )
-        
-        # Validate email format
-        if not validate_email(body.email):
-            logger.warn("Invalid email format", {
+        # Sanitize email (trim and lowercase) - Pydantic's EmailStr already validated the format
+        sanitized_email = sanitize_email(body.email)
+        # Note: sanitize_email may return None for edge cases, but since Pydantic validated it,
+        # we trust the email is valid. If sanitize_email fails, it's a programming error.
+        if not sanitized_email:
+            logger.error("Email sanitization failed after Pydantic validation", {
                 "email": body.email[:10] + "..." if len(body.email) > 10 else body.email,
                 "correlation_id": correlation_id
             })
             raise HTTPException(
-                status_code=400,
+                status_code=500,
                 detail={
-                    "error": "Please enter a valid email address",
-                    "code": "VALIDATION_ERROR"
-                }
-            )
-        
-        # Sanitize email
-        sanitized_email = sanitize_email(body.email)
-        if not sanitized_email:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "error": "Please enter a valid email address",
-                    "code": "VALIDATION_ERROR"
+                    "error": "Something went wrong. Please try again later.",
+                    "code": "INTERNAL_ERROR"
                 }
             )
         
