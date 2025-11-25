@@ -2,7 +2,7 @@ fastapi==0.109.0
 uvicorn[standard]==0.27.0
 pydantic==2.5.3
 pydantic[email]
-pydantic-settings  <-- ADD THIS LINE
+pydantic-settings  
 supabase==2.10.0
 resend==2.1.0
 python-dotenv==1.0.0
