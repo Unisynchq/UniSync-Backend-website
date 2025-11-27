@@ -15,7 +15,9 @@ def setup_cors(app: FastAPI):
     """
     # Build allowed origins list
     origins = [
-        "http://localhost:3000",  # Development
+        "http://localhost:3000",
+        "https://unisynchq.com",
+        "https://www.unisynchq.com"
     ]
     
     # Add frontend URL from settings if provided
