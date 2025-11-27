@@ -49,16 +49,35 @@ def setup_cors(app: FastAPI):
     
     # Regex to match localhost or any subdomain of unisynchq.com
     # More permissive pattern to catch all variants
+    # This regex matches:
+    # - http://localhost:PORT or http://127.0.0.1:PORT (any port)
+    # - https://unisynchq.com (no subdomain)
+    # - https://www.unisynchq.com (www subdomain)
+    # - https://any-subdomain.unisynchq.com (any subdomain)
     origin_regex = r"^(http://localhost:\d+|http://127\.0\.0\.1:\d+|https://([a-zA-Z0-9-]+\.)*unisynchq\.com)$"
     
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=unique_origins,  # Explicit list for reliability
-        allow_origin_regex=origin_regex,  # Regex fallback for flexibility
-        allow_credentials=True,
-        allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-        allow_headers=["*"],
-        expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
-        max_age=3600,  # Cache preflight requests for 1 hour
-    )
+    # Use wildcard for development, regex for production
+    if settings.ENVIRONMENT == "development":
+        # More permissive in development
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=["*"],  # Allow all in development
+            allow_credentials=False,  # Can't use credentials with wildcard
+            allow_methods=["*"],
+            allow_headers=["*"],
+            expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
+        )
+    else:
+        # Production: Use BOTH explicit list AND regex for maximum compatibility
+        # FastAPI uses OR logic - if either matches, origin is allowed
+        app.add_middleware(
+            CORSMiddleware,
+            allow_origins=unique_origins,  # Explicit list for known origins
+            allow_origin_regex=origin_regex,  # Regex for any subdomain variants
+            allow_credentials=True,
+            allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+            allow_headers=["*"],
+            expose_headers=["X-RateLimit-Limit", "X-RateLimit-Remaining", "X-RateLimit-Reset"],
+            max_age=3600,  # Cache preflight requests for 1 hour
+        )
 
