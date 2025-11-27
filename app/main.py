@@ -3,12 +3,13 @@ FastAPI application entry point
 """
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from fastapi.exceptions import RequestValidationError
 from datetime import datetime
 from app.config import settings
 from app.middleware.cors import setup_cors
 from app.api.routes import subscribe
 from app.utils.logger import logger
-from app.schemas import HealthResponse
+from app.schemas import HealthResponse, ErrorResponse
 
 
 # Initialize FastAPI app
@@ -54,6 +55,44 @@ async def log_requests(request: Request, call_next):
     })
     
     return response
+
+
+# Request validation error handler
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Handle Pydantic validation errors with user-friendly messages"""
+    errors = exc.errors()
+    
+    # Extract the first error message for user-friendly response
+    error_message = "Invalid request. Please check your input."
+    if errors:
+        first_error = errors[0]
+        field = ".".join(str(loc) for loc in first_error.get("loc", []))
+        error_type = first_error.get("type", "")
+        error_msg = first_error.get("msg", "")
+        
+        # Customize error message for email validation
+        if "email" in field.lower() or "value is not a valid email address" in str(error_msg).lower():
+            error_message = "Please enter a valid email address."
+        elif field:
+            error_message = f"Invalid value for {field}. {error_msg}"
+        else:
+            error_message = error_msg or error_message
+    
+    logger.warn("Validation error", {
+        "path": request.url.path,
+        "method": request.method,
+        "errors": str(errors),
+        "error_message": error_message
+    })
+    
+    return JSONResponse(
+        status_code=400,
+        content=ErrorResponse(
+            error=error_message,
+            code="VALIDATION_ERROR"
+        ).model_dump()
+    )
 
 
 # Global exception handler (excludes HTTPException which FastAPI handles automatically)

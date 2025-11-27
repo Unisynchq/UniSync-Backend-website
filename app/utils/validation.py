@@ -25,21 +25,23 @@ def validate_email(email: str) -> bool:
 
 def sanitize_email(email: str) -> Optional[str]:
     """
-    Sanitize email address by trimming and lowercasing
+    Sanitize email address by trimming and lowercasing.
+    Note: Email format is already validated by Pydantic's EmailStr before this function is called.
     
     Args:
-        email: Email address to sanitize
+        email: Email address to sanitize (already validated by Pydantic)
         
     Returns:
-        Sanitized email or None if invalid
+        Sanitized email (trimmed and lowercased) or None if input is invalid
     """
     if not email or not isinstance(email, str):
         return None
     
+    # Just sanitize (trim and lowercase) - validation already done by Pydantic
     sanitized = email.strip().lower()
     
-    # Validate after sanitization
-    if not validate_email(sanitized):
+    # Basic check to ensure we have something after sanitization
+    if not sanitized:
         return None
     
     return sanitized

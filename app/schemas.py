@@ -1,7 +1,7 @@
 """
 Pydantic request/response schemas
 """
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional
 
 
@@ -11,6 +11,14 @@ class SubscribeRequest(BaseModel):
     bot_check: Optional[str] = Field(None, description="Honeypot field (should be empty)", max_length=100)
     source: Optional[str] = Field("landing_hero", description="Source of subscription", max_length=50)
     timestamp: Optional[str] = Field(None, description="Request timestamp", max_length=50)
+    
+    @field_validator('email', mode='before')
+    @classmethod
+    def trim_email(cls, v: str) -> str:
+        """Trim whitespace from email before validation"""
+        if isinstance(v, str):
+            return v.strip()
+        return v
 
 
 class SubscribeResponse(BaseModel):
