@@ -30,7 +30,7 @@ class Settings(BaseSettings):
     SENTRY_DSN: Optional[str] = Field(default=None, description="Sentry DSN for error tracking")
     
     # Rate Limiting
-    RATE_LIMIT_REQUESTS: int = Field(default=5, description="Maximum requests per window")
+    RATE_LIMIT_REQUESTS: int = Field(default=10, description="Maximum requests per window")
     RATE_LIMIT_WINDOW_MINUTES: int = Field(default=15, description="Rate limit window in minutes")
     
     @field_validator('ENVIRONMENT')

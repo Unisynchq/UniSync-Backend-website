@@ -7,7 +7,7 @@ from typing import Optional
 
 def validate_email(email: str) -> bool:
     """
-    Validate email format using regex
+    Validate email format using lenient regex
     
     Args:
         email: Email address to validate
@@ -18,9 +18,26 @@ def validate_email(email: str) -> bool:
     if not email or not isinstance(email, str):
         return False
     
-    # RFC 5322 compliant regex (simplified)
-    email_regex = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-    return bool(re.match(email_regex, email))
+    # More lenient regex that allows common email formats
+    # Allows: letters, numbers, dots, hyphens, underscores, plus, percent in local part
+    # Allows: multiple subdomains, hyphens in domain
+    # Requires: valid TLD with 2+ characters
+    email_pattern = r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$'
+    
+    if not re.match(email_pattern, email):
+        return False
+    
+    # Additional basic checks
+    if email.startswith('.') or email.startswith('@'):
+        return False
+    if email.count('@') != 1:
+        return False
+    if '..' in email:
+        return False
+    if email.endswith('.'):
+        return False
+    
+    return True
 
 
 def sanitize_email(email: str) -> Optional[str]:
