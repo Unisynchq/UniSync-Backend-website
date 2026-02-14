@@ -84,3 +84,116 @@ class HealthResponse(BaseModel):
     timestamp: str
     environment: str
 
+
+class AuthRequest(BaseModel):
+    """Request schema for login/signup"""
+    email: str = Field(..., description="User email")
+    password: str = Field(..., min_length=8, description="User password")
+
+
+class UserOut(BaseModel):
+    """Public user schema"""
+    id: str
+    email: str
+    created_at: str
+
+
+from typing import Optional, List, Any, Dict
+
+
+class AuthResponse(BaseModel):
+    """Response schema for authentication"""
+    success: bool
+    user: Optional[UserOut] = None
+    access_token: Optional[str] = None
+    refresh_token: Optional[str] = None
+    message: Optional[str] = None
+    error: Optional[str] = None
+
+
+class QuestionPublicOut(BaseModel):
+    """Schema for public question data"""
+    id: str
+    text: str
+    type: str
+    order: int
+
+
+class FormPublicOut(BaseModel):
+    """Schema for public form data"""
+    id: str
+    slug: str
+    title: str
+    description: Optional[str] = None
+    questions: List[QuestionPublicOut] = []
+
+
+class ResponseSubmitRequest(BaseModel):
+    """Schema for submitting a form response"""
+    form_id: str
+    answers: Dict[str, Any] = Field(..., description="Key-value pairs of question_id and user answer")
+
+
+# --- Phase 4: Core APIs Schemas ---
+
+class FormCreate(BaseModel):
+    """Schema for creating a new form"""
+    title: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
+    slug: Optional[str] = Field(None, pattern=r'^[a-z0-9-]+$')
+
+
+class FormUpdate(BaseModel):
+    """Schema for updating form settings"""
+    title: Optional[str] = Field(None, min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=1000)
+    is_published: Optional[bool] = None
+
+
+class QuestionCreate(BaseModel):
+    """Schema for adding a question to a form"""
+    form_id: str
+    text: str = Field(..., min_length=1)
+    type: str = Field(..., pattern=r'^(text|number|select|multiselect|date)$')
+    order: int
+    options: Optional[List[str]] = None
+
+
+class QuestionUpdate(BaseModel):
+    """Schema for updating a question"""
+    text: Optional[str] = None
+    type: Optional[str] = None
+    order: Optional[int] = None
+    options: Optional[List[str]] = None
+
+
+class QuestionOut(BaseModel):
+    """Comprehensive question schema"""
+    id: str
+    form_id: str
+    text: str
+    type: str
+    order: int
+    options: Optional[List[str]] = None
+    created_at: str
+
+
+class FormOut(BaseModel):
+    """Comprehensive form schema"""
+    id: str
+    owner_id: str
+    slug: str
+    title: str
+    description: Optional[str] = None
+    is_published: bool
+    created_at: str
+    questions: List[QuestionOut] = []
+
+
+class DashboardStats(BaseModel):
+    """Schema for dashboard metrics"""
+    total_forms: int
+    total_responses: int
+    published_forms_count: int
+    recent_responses_count: int
+

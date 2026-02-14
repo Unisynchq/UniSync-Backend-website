@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from datetime import datetime
 from app.config import settings
 from app.middleware.cors import setup_cors
-from app.api.routes import subscribe
+from app.api.routes import subscribe, auth, forms, forms_auth, questions
 from app.utils.logger import logger
 from app.schemas import HealthResponse, ErrorResponse
 
@@ -169,6 +169,30 @@ app.include_router(
     subscribe.router,
     prefix=settings.API_PREFIX,
     tags=["subscriptions"]
+)
+
+app.include_router(
+    auth.router,
+    prefix=f"{settings.API_PREFIX}/auth",
+    tags=["authentication"]
+)
+
+app.include_router(
+    forms.router,
+    prefix=f"{settings.API_PREFIX}/f",
+    tags=["public forms"]
+)
+
+app.include_router(
+    forms_auth.router,
+    prefix=f"{settings.API_PREFIX}/forms",
+    tags=["authenticated forms"]
+)
+
+app.include_router(
+    questions.router,
+    prefix=f"{settings.API_PREFIX}/questions",
+    tags=["questions"]
 )
 
 

@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     # Optional
     REDIS_URL: Optional[str] = Field(default=None, description="Redis URL for distributed rate limiting")
     SENTRY_DSN: Optional[str] = Field(default=None, description="Sentry DSN for error tracking")
+    GOOGLE_API_KEY: Optional[str] = Field(default=None, description="Google API key for Gemini AI")
     
     # Rate Limiting
     RATE_LIMIT_REQUESTS: int = Field(default=10, description="Maximum requests per window")
