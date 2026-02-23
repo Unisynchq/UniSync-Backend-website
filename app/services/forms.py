@@ -201,6 +201,10 @@ class FormService:
                         # Fetch form title and questions for AI context
                         form = self.get_public_form_by_slug_by_id(form_id)
                         if form:
+                            # 1. Establish pending state safely to DB before async dispatch
+                            ai_service.create_pending_analysis(response_id)
+                            
+                            # 2. Dispatch LLM logic sequentially to the thread pool
                             background_tasks.add_task(
                                 ai_service.analyze_submission,
                                 response_id,
@@ -291,7 +295,7 @@ class FormService:
             raise
 
     def delete_question(self, user_id: str, question_id: str) -> bool:
-        """Delete a question from a form owned by the user"""
+        """Delete a question from a form owned by the user and clean up orphaned responses"""
         try:
             q_result = supabase.table("questions").select("form_id").eq("id", question_id).execute()
             if not q_result.data:
@@ -302,6 +306,19 @@ class FormService:
             if not form:
                 raise Exception("Access denied to question's form")
 
+            # First, clean up orphaned answers in the responses table
+            # Supabase Python SDK doesn't natively support deep JSONB mutation yet
+            # So we fetch all responses for this form_id, strip the question_id key, and update
+            responses_result = supabase.table("responses").select("id, answers").eq("form_id", form_id).execute()
+            
+            if responses_result.data:
+                for resp in responses_result.data:
+                    answers = resp.get("answers", {})
+                    if question_id in answers:
+                        del answers[question_id]
+                        supabase.table("responses").update({"answers": answers}).eq("id", resp["id"]).execute()
+
+            # Now safely delete the question
             result = supabase.table("questions").delete().eq("id", question_id).execute()
             return len(result.data) > 0
         except Exception as e:

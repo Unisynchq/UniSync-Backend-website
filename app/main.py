@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from datetime import datetime
 from app.config import settings
 from app.middleware.cors import setup_cors
-from app.api.routes import subscribe, auth, forms, forms_auth, questions
+from app.api.routes import subscribe, auth, forms, forms_auth, questions, responses_auth
 from app.utils.logger import logger
 from app.schemas import HealthResponse, ErrorResponse
 
@@ -22,39 +22,7 @@ app = FastAPI(
 )
 
 
-# Manual CORS Override Middleware - MUST be first to handle OPTIONS preflight
-@app.middleware("http")
-async def catch_all_options_middleware(request: Request, call_next):
-    """
-    Manual CORS override middleware that forces CORS headers on every response.
-    Uses dynamic origin from request header to fix CORS 204 errors.
-    """
-    # Get the origin of the request
-    origin = request.headers.get("origin") or "*"
-    
-    # 1. Intercept OPTIONS (Preflight) requests
-    if request.method == "OPTIONS":
-        return Response(
-            status_code=200,
-            headers={
-                "Access-Control-Allow-Origin": origin,
-                "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
-                "Access-Control-Allow-Headers": "Content-Type, Authorization",
-                "Access-Control-Allow-Credentials": "true",
-            }
-        )
-    
-    # 2. Process normal requests
-    response = await call_next(request)
-    
-    # 3. Force CORS headers on the response
-    response.headers["Access-Control-Allow-Origin"] = origin
-    response.headers["Access-Control-Allow-Credentials"] = "true"
-    
-    return response
-
-
-# Setup CORS (kept as fallback, but manual middleware above takes precedence)
+# Setup CORS
 setup_cors(app)
 
 
@@ -193,6 +161,12 @@ app.include_router(
     questions.router,
     prefix=f"{settings.API_PREFIX}/questions",
     tags=["questions"]
+)
+
+app.include_router(
+    responses_auth.router,
+    prefix=f"{settings.API_PREFIX}/responses",
+    tags=["authenticated responses"]
 )
 
 

@@ -1,88 +1,90 @@
-import os
-from unittest.mock import patch, MagicMock, AsyncMock
-
-# Set dummy environment variables
-os.environ["SUPABASE_URL"] = "https://example.supabase.co"
-os.environ["SUPABASE_KEY"] = "dummy_key"
-os.environ["RESEND_API_KEY"] = "re_dummy_key"
-os.environ["FRONTEND_URL"] = "http://localhost:3000"
-os.environ["GOOGLE_API_KEY"] = "sk-dummy-google-key"
-
 import pytest
-from fastapi.testclient import TestClient
-from fastapi import BackgroundTasks
+from unittest.mock import patch, MagicMock
+from app.services.ai import ai_service
+from app.schemas import AIAnalysisUpdate
 
-with patch("supabase.create_client"), patch("app.database.supabase"):
-    with patch("google.generativeai.configure"):
-        from app.main import app
+def test_sanitize_prompts():
+    """Verify malicious or massive inputs are truncated to prevent context flooding"""
+    long_string = "A" * 6000
+    sanitized = ai_service._sanitize_input(long_string)
+    assert len(sanitized) == 5016  # 5000 + len("... [TRUNCATED]")
+    assert sanitized.endswith("... [TRUNCATED]")
+    
+    # Normal input should be untouched
+    short_string = "This app is great."
+    assert ai_service._sanitize_input(short_string) == short_string
 
-client = TestClient(app)
+@patch('app.services.ai.supabase')
+def test_create_pending_analysis(mock_supabase):
+    """Verify that a pending record triggers correctly to the database"""
+    # Mocking the Supabase chained call: supabase.table().insert().execute()
+    mock_insert = MagicMock()
+    mock_supabase.table.return_value.insert.return_value = mock_insert
+    
+    response_id = "test-123"
+    result = ai_service.create_pending_analysis(response_id)
+    
+    assert result is True
+    mock_supabase.table.assert_called_with("ai_analysis")
+    mock_supabase.table().insert.assert_called_with({
+        "response_id": response_id,
+        "status": "pending"
+    })
+    mock_insert.execute.assert_called_once()
 
-@patch("app.api.routes.forms.rate_limit_service.check_rate_limit")
-@patch("app.services.forms.supabase")
-@patch("app.services.ai.ai_service.model")
-@patch("app.api.routes.forms.form_service")
-def test_form_submission_triggers_ai(mock_form_service, mock_model, mock_supabase, mock_limit):
-    # Mock rate limit
-    mock_limit.return_value = (True, 10, MagicMock())
+@patch('app.services.ai.genai.GenerativeModel')
+@patch('app.services.ai.supabase')
+def test_analyze_submission_success(mock_supabase, mock_generative_model):
+    """Verify complete analysis flow when LLM returns valid JSON"""
+    # Bind the mock model to the service instance manually for this test
+    # (assuming it initialized with one)
+    mock_model_instance = MagicMock()
+    ai_service.model = mock_model_instance
     
-    # Mock public form lookup
-    mock_form_service.get_public_form_by_slug.return_value = {
-        "id": "form_123",
-        "title": "Feedback Form",
-        "questions": [{"id": "q1", "text": "How was it?"}]
-    }
-    
-    # Mock submission result
-    mock_form_service.submit_response.return_value = {
-        "success": True,
-        "message": "Response submitted successfully",
-        "response_id": "resp_123"
-    }
-
-    # Execute submission
-    payload = {
-        "form_id": "form_123",
-        "answers": {"q1": "It was great!"}
-    }
-    
-    response = client.post("/api/f/feedback/submit", json=payload)
-    
-    assert response.status_code == 200
-    assert response.json()["success"] == True
-    
-    # Verify submit_response was called with background_tasks
-    args, kwargs = mock_form_service.submit_response.call_args
-    assert args[0] == "form_123"
-    assert isinstance(args[2], BackgroundTasks)
-
-@patch("app.services.ai.supabase")
-@pytest.mark.asyncio
-async def test_ai_analysis_logic(mock_supabase):
-    from app.services.ai import ai_service
-    
-    # Patch the model on the existing ai_service instance
-    mock_model = MagicMock()
+    # Mock LLM response mapping to our enforced schema
     mock_response = MagicMock()
-    mock_response.text = '{"sentiment": "positive", "summary": "Great feedback", "key_insights": ["Fast", "Simple"], "flagged": false}'
-    mock_model.generate_content.return_value = mock_response
+    mock_response.text = '{"category":"Feedback","sentiment":"Positive","summary":"Good job.","actionable":false}'
+    mock_model_instance.generate_content.return_value = mock_response
     
-    with patch.object(ai_service, 'model', mock_model):
-        # Execute analysis
-        await ai_service.analyze_submission(
-            "resp_123", 
-            "Test Form", 
-            [{"id": "q1", "text": "Q1"}], 
-            {"q1": "A1"}
-        )
-        
-        # Verify Gemini was called
-        mock_model.generate_content.assert_called_once()
-        
-        # Verify DB storage
-        mock_supabase.table.assert_called_with("ai_analysis")
-        mock_supabase.table().insert.assert_called_once()
-        args, kwargs = mock_supabase.table().insert.call_args
-        assert args[0]["response_id"] == "resp_123"
-        assert args[0]["status"] == "completed"
-        assert args[0]["raw_analysis"]["sentiment"] == "positive"
+    # Mock Database Update
+    mock_update = MagicMock()
+    mock_supabase.table.return_value.update.return_value.eq.return_value = mock_update
+    
+    # Perform the action
+    ai_service.analyze_submission(
+        response_id="response-xyz",
+        form_title="Beta Feedback",
+        questions=[{"id": "q1", "text": "What do you like?"}],
+        answers={"q1": "Everything."}
+    )
+    
+    # Verify the background update called Supabase with 'completed'
+    mock_supabase.table.assert_called_with("ai_analysis")
+    update_arg = mock_supabase.table().update.call_args[0][0]
+    assert update_arg["status"] == "completed"
+    assert update_arg["raw_analysis"]["sentiment"] == "Positive"
+    assert "error_log" not in update_arg # Should be excluded via exclude_none=True
+
+@patch('app.services.ai.supabase')
+def test_analyze_submission_handles_llm_failure(mock_supabase):
+    """Verify that if the LLM crashes or fails, the database row is safely marked as failed"""
+    mock_model_instance = MagicMock()
+    ai_service.model = mock_model_instance
+    
+    # Force the LLM to raise an Exception
+    mock_model_instance.generate_content.side_effect = Exception("API Quota Exceeded")
+    
+    mock_update = MagicMock()
+    mock_supabase.table.return_value.update.return_value.eq.return_value = mock_update
+    
+    ai_service.analyze_submission(
+        response_id="fail-test-id",
+        form_title="Feedback",
+        questions=[],
+        answers={}
+    )
+    
+    # Verify it updated the schema to failed
+    update_arg = mock_supabase.table().update.call_args[0][0]
+    assert update_arg["status"] == "failed"
+    assert "API Quota Exceeded" in update_arg["error_log"]

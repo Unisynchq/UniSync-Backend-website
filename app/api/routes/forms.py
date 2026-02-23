@@ -7,7 +7,7 @@ from app.utils.logger import logger
 router = APIRouter()
 
 @router.get("/{slug}", response_model=FormPublicOut)
-async def get_public_form(slug: str):
+def get_public_form(slug: str):
     """
     Get a public form and its questions by slug.
     """
@@ -17,7 +17,7 @@ async def get_public_form(slug: str):
     return form
 
 @router.post("/{slug}/submit")
-async def submit_form_response(request: Request, slug: str, body: ResponseSubmitRequest, background_tasks: BackgroundTasks):
+def submit_form_response(request: Request, slug: str, body: ResponseSubmitRequest, background_tasks: BackgroundTasks):
     """
     Submit a form response anonymously.
     Rate limited according to global settings.

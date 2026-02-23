@@ -7,3 +7,5 @@ supabase==2.10.0
 resend==2.1.0
 python-dotenv==1.0.0
 slowapi==0.1.9
+google-generativeai
+google-generativeai
