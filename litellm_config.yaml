@@ -10,5 +10,5 @@ model_list:
       api_key: "os.environ/HUGGINGFACE_API_KEY"
 
 general_settings:
-  master_key: sk-1234
-  database_url: "postgresql://llmproxy:dbpassword9090@db:5432/litellm"
+  master_key: "os.environ/LITELLM_MASTER_KEY"
+  database_url: "os.environ/DATABASE_URL"
