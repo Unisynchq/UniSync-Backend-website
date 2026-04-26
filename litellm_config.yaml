@@ -1,0 +1,14 @@
+model_list:
+  - model_name: meta-llama-3-8b
+    litellm_params:
+      model: huggingface/meta-llama/Meta-Llama-3-8B-Instruct
+      api_key: "os.environ/HUGGINGFACE_API_KEY"
+  
+  - model_name: ai-text-detector
+    litellm_params:
+      model: huggingface/desklib/ai-text-detector-v1.01
+      api_key: "os.environ/HUGGINGFACE_API_KEY"
+
+general_settings:
+  master_key: sk-1234
+  database_url: "postgresql://llmproxy:dbpassword9090@db:5432/litellm"

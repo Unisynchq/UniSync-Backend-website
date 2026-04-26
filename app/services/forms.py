@@ -14,7 +14,7 @@ class FormService:
         try:
             # Fetch form
             form_result = supabase.table("forms") \
-                .select("id, slug, title, description, is_published") \
+                .select("id, slug, title, description, is_published, is_ai_enabled") \
                 .eq("slug", slug) \
                 .eq("is_published", True) \
                 .execute()
@@ -45,7 +45,7 @@ class FormService:
         """List all forms owned by a user"""
         try:
             result = supabase.table("forms") \
-                .select("id, slug, title, description, is_published, created_at") \
+                .select("id, slug, title, description, is_published, is_ai_enabled, created_at") \
                 .eq("owner_id", user_id) \
                 .order("created_at", descending=True) \
                 .execute()
@@ -95,7 +95,8 @@ class FormService:
                 "title": data["title"],
                 "description": data.get("description"),
                 "slug": data["slug"],
-                "is_published": False
+                "is_published": False,
+                "is_ai_enabled": data.get("is_ai_enabled", True)
             }
             
             result = supabase.table("forms").insert(form_data).execute()
@@ -109,7 +110,7 @@ class FormService:
         try:
             # Only update allowed fields
             update_data = {}
-            for field in ["title", "description", "is_published"]:
+            for field in ["title", "description", "is_published", "is_ai_enabled"]:
                 if field in data and data[field] is not None:
                     update_data[field] = data[field]
             

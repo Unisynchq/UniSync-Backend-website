@@ -7,7 +7,7 @@ def test_sanitize_prompts():
     """Verify malicious or massive inputs are truncated to prevent context flooding"""
     long_string = "A" * 6000
     sanitized = ai_service._sanitize_input(long_string)
-    assert len(sanitized) == 5016  # 5000 + len("... [TRUNCATED]")
+    assert len(sanitized) == 5015  # 5000 + len("... [TRUNCATED]")
     assert sanitized.endswith("... [TRUNCATED]")
     
     # Normal input should be untouched
@@ -32,19 +32,19 @@ def test_create_pending_analysis(mock_supabase):
     })
     mock_insert.execute.assert_called_once()
 
-@patch('app.services.ai.genai.GenerativeModel')
+@patch('app.services.ai.genai.Client')
 @patch('app.services.ai.supabase')
-def test_analyze_submission_success(mock_supabase, mock_generative_model):
+def test_analyze_submission_success(mock_supabase, mock_genai_client):
     """Verify complete analysis flow when LLM returns valid JSON"""
     # Bind the mock model to the service instance manually for this test
     # (assuming it initialized with one)
-    mock_model_instance = MagicMock()
-    ai_service.model = mock_model_instance
+    mock_client_instance = MagicMock()
+    ai_service.client = mock_client_instance
     
     # Mock LLM response mapping to our enforced schema
     mock_response = MagicMock()
     mock_response.text = '{"category":"Feedback","sentiment":"Positive","summary":"Good job.","actionable":false}'
-    mock_model_instance.generate_content.return_value = mock_response
+    mock_client_instance.models.generate_content.return_value = mock_response
     
     # Mock Database Update
     mock_update = MagicMock()
@@ -65,14 +65,15 @@ def test_analyze_submission_success(mock_supabase, mock_generative_model):
     assert update_arg["raw_analysis"]["sentiment"] == "Positive"
     assert "error_log" not in update_arg # Should be excluded via exclude_none=True
 
+@patch('app.services.ai.genai.Client')
 @patch('app.services.ai.supabase')
-def test_analyze_submission_handles_llm_failure(mock_supabase):
+def test_analyze_submission_handles_llm_failure(mock_supabase, mock_genai_client):
     """Verify that if the LLM crashes or fails, the database row is safely marked as failed"""
-    mock_model_instance = MagicMock()
-    ai_service.model = mock_model_instance
+    mock_client_instance = MagicMock()
+    ai_service.client = mock_client_instance
     
     # Force the LLM to raise an Exception
-    mock_model_instance.generate_content.side_effect = Exception("API Quota Exceeded")
+    mock_client_instance.models.generate_content.side_effect = Exception("API Quota Exceeded")
     
     mock_update = MagicMock()
     mock_supabase.table.return_value.update.return_value.eq.return_value = mock_update
