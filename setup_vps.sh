@@ -51,8 +51,24 @@ $DOCKER_COMPOSE up -d
 
 # Start FastAPI with PM2 (Production Mode: Gunicorn + Uvicorn Workers)
 echo "⚡ Starting FastAPI App with Gunicorn/PM2..."
-# We use Gunicorn with Uvicorn workers for production stability
-pm2 start "venv/bin/gunicorn app.main:app --workers 4 --worker-class uvicorn.workers.UvicornWorker --bind 0.0.0.0:8000" --name unisync-backend --update-env
+
+# Create a start script to ensure PM2 uses the correct interpreter and paths
+cat <<EOF > start.sh
+#!/bin/bash
+cd $PROJECT_DIR
+source venv/bin/activate
+exec venv/bin/gunicorn app.main:app \\
+  --workers 4 \\
+  --worker-class uvicorn.workers.UvicornWorker \\
+  --bind 0.0.0.0:8000 \\
+  --timeout 120
+EOF
+
+chmod +x start.sh
+
+# Start with PM2
+pm2 delete unisync-backend 2>/dev/null || true
+pm2 start ./start.sh --name unisync-backend --update-env
 pm2 save
 pm2 startup
 
