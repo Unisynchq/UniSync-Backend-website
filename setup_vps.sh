@@ -19,6 +19,16 @@ if ! command -v docker &> /dev/null; then
     sudo usermod -aG docker $USER
 fi
 
+if docker compose version &> /dev/null; then
+    DOCKER_COMPOSE="sudo docker compose"
+elif command -v docker-compose &> /dev/null; then
+    DOCKER_COMPOSE="sudo docker-compose"
+else
+    echo "Installing Docker Compose plugin..."
+    sudo apt install -y docker-compose-plugin
+    DOCKER_COMPOSE="sudo docker compose"
+fi
+
 # 3. Install PM2 Globally
 sudo npm install -g pm2
 
@@ -37,7 +47,7 @@ pip install -r requirements.txt gunicorn uvicorn
 
 # Start LiteLLM Infrastructure
 echo "🐳 Starting LiteLLM & Postgres (Docker)..."
-sudo docker-compose up -d
+$DOCKER_COMPOSE up -d
 
 # Start FastAPI with PM2 (Production Mode: Gunicorn + Uvicorn Workers)
 echo "⚡ Starting FastAPI App with Gunicorn/PM2..."
