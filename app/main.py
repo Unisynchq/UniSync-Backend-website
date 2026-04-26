@@ -7,7 +7,7 @@ from fastapi.exceptions import RequestValidationError
 from datetime import datetime
 from app.config import settings
 from app.middleware.cors import setup_cors
-from app.api.routes import subscribe, auth, forms, forms_auth, questions, responses_auth
+from app.api.routes import subscribe, auth, forms, forms_auth, questions, responses_auth, analyze, dashboard, feedback, trends, insights, actions
 from app.utils.logger import logger
 from app.schemas import HealthResponse, ErrorResponse
 
@@ -167,6 +167,37 @@ app.include_router(
     responses_auth.router,
     prefix=f"{settings.API_PREFIX}/responses",
     tags=["authenticated responses"]
+)
+
+app.include_router(
+    analyze.router,
+    prefix=f"{settings.API_PREFIX}/v1/analyze",
+    tags=["ai analysis"]
+)
+
+app.include_router(
+    dashboard.router,
+    tags=["dashboard"]
+)
+
+app.include_router(
+    feedback.router,
+    tags=["feedback"]
+)
+
+app.include_router(
+    trends.router,
+    tags=["trends"]
+)
+
+app.include_router(
+    insights.router,
+    tags=["insights"]
+)
+
+app.include_router(
+    actions.router,
+    tags=["actions"]
 )
 
 

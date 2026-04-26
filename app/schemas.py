@@ -156,6 +156,7 @@ class FormCreate(BaseModel):
     title: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
     slug: Optional[str] = Field(None, pattern=r'^[a-z0-9-]+$')
+    is_ai_enabled: Optional[bool] = True
 
 
 class FormUpdate(BaseModel):
@@ -163,6 +164,7 @@ class FormUpdate(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=1000)
     is_published: Optional[bool] = None
+    is_ai_enabled: Optional[bool] = None
 
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -228,6 +230,7 @@ class FormOut(BaseModel):
     title: str
     description: Optional[str] = None
     is_published: bool
+    is_ai_enabled: bool
     created_at: str
     questions: List[QuestionOut] = []
 
@@ -261,6 +264,29 @@ class AIAnalysisUpdate(BaseModel):
     status: str = Field(..., pattern=r"^(completed|failed)$")
     error_log: Optional[str] = None
 
+class AILiveAnalyzeRequest(BaseModel):
+    """Request schema for live AI analysis during typing"""
+    form_id: str
+    question_id: str
+    question_text: str
+    answer_text: str
+
+class QualityScore(BaseModel):
+    """Quality scoring details"""
+    indicator: str = Field(..., pattern=r"^(red|amber|green)$")
+    suggestion: str
+
+class AIDetection(BaseModel):
+    """AI origin detection details"""
+    is_ai_generated: bool
+    probability: float
+    feedback: str
+
+class AILiveAnalyzeResponse(BaseModel):
+    """Combined response for live AI analysis"""
+    quality_score: QualityScore
+    ai_detection: AIDetection
+
 class ResponseOut(BaseModel):
     """Schema for form response data"""
     id: str
@@ -270,3 +296,67 @@ class ResponseOut(BaseModel):
     created_at: str
     ai_analysis: Optional[AIAnalysisOut] = None
 
+# --------------------------------------------------------------------
+# Analytics & Dashboard Schemas (Sync Frontend)
+# --------------------------------------------------------------------
+
+class FeedbackItemOut(BaseModel):
+    """Schema for individual feedback item displayed in the inbox"""
+    id: str
+    user_name: Optional[str] = None
+    user_email: Optional[str] = None
+    score: int
+    comment: Optional[str] = None
+    sem_type: Optional[str] = Field(None, alias="semType")
+    section: Optional[str] = None
+    categories: List[str] = []
+    status: str
+    is_reviewed: bool
+    created_at: str
+    updated_at: str
+
+    class Config:
+        populate_by_name = True
+
+class ActionTaskBase(BaseModel):
+    text: str
+    status: str
+    context: Optional[str] = None
+    category: Optional[str] = None
+
+class ActionTaskCreate(ActionTaskBase):
+    pass
+
+class ActionTaskUpdate(BaseModel):
+    status: Optional[str] = None
+    text: Optional[str] = None
+
+class ActionTaskOut(ActionTaskBase):
+    id: str
+    created_at: str
+    updated_at: str
+
+class TrendDataPointOut(BaseModel):
+    """Schema for trend data points across time"""
+    id: str
+    date: str
+    clarity_score: float
+    engagement_score: float
+    support_score: float
+    org_score: float
+    period_type: str
+
+class CategoryInsightOut(BaseModel):
+    """Schema for AI generated category insights"""
+    id: str
+    category_name: str
+    insights: List[str] = []
+    themes: List[str] = []
+    actionable: List[str] = []
+    date_generated: str
+
+class DashboardStatsOut(BaseModel):
+    """Schema for high-level dashboard statistics"""
+    totalFeedback: int
+    positiveCount: int
+    averageScore: float

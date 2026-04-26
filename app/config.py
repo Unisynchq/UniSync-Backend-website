@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     REDIS_URL: Optional[str] = Field(default=None, description="Redis URL for distributed rate limiting")
     SENTRY_DSN: Optional[str] = Field(default=None, description="Sentry DSN for error tracking")
     GOOGLE_API_KEY: Optional[str] = Field(default=None, description="Google API key for Gemini AI")
+    HUGGINGFACE_TOKEN: Optional[str] = Field(default=None, description="HuggingFace Access Token for AI analysis")
+    LITELLM_PROXY_URL: Optional[str] = Field(default="http://localhost:4000", description="LiteLLM Proxy URL")
+    LITELLM_MASTER_KEY: Optional[str] = Field(default="sk-1234", description="LiteLLM Master Key")
     
     # Rate Limiting
     RATE_LIMIT_REQUESTS: int = Field(default=10, description="Maximum requests per window")
