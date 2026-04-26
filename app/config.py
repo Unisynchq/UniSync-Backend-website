@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     
     # Application
     ENVIRONMENT: str = Field(default="development", description="Application environment")
-    FRONTEND_URL: str = Field(..., description="Frontend URL for CORS configuration")
+    FRONTEND_URL: str = Field(default="", description="Frontend URL for CORS configuration (optional)")
     API_PREFIX: str = Field(default="/api", description="API route prefix")
     
     # Optional
@@ -49,9 +49,9 @@ class Settings(BaseSettings):
     @field_validator('FRONTEND_URL')
     @classmethod
     def validate_frontend_url(cls, v: str, info) -> str:
-        """Validate frontend URL format"""
+        """Validate frontend URL format (optional)"""
         if not v:
-            raise ValueError("FRONTEND_URL is required and cannot be empty")
+            return v  # Allow empty
         if not v.startswith(('http://', 'https://')):
             raise ValueError("FRONTEND_URL must start with http:// or https://")
         return v
